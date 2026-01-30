@@ -71,7 +71,15 @@ class SocketService extends GetxController {
 
   void _onMessage(dynamic message) {
     try {
-      final data = jsonDecode(message as String) as Map<String, dynamic>;
+      // Convert Uint8List to String if needed
+      String messageString;
+      if (message is List<int>) {
+        messageString = String.fromCharCodes(message);
+      } else {
+        messageString = message as String;
+      }
+
+      final data = jsonDecode(messageString) as Map<String, dynamic>;
       _messageController.add(data);
     } catch (e) {
       debugPrint('Error parsing message: $e');

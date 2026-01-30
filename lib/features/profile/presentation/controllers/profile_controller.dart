@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/encryption_utils.dart';
@@ -34,9 +35,11 @@ class ProfileController extends GetxController {
       (failure) {
         _error.value = failure.message;
         _profile.value = null;
+        debugPrint('⚠️ No profile found: ${failure.message}');
       },
       (profile) {
         _profile.value = profile;
+        debugPrint('✅ Profile loaded: ${profile.userName}');
       },
     );
 

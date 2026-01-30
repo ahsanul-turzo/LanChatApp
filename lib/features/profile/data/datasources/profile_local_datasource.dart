@@ -23,7 +23,11 @@ class ProfileLocalDataSourceImpl implements ProfileLocalDataSource {
       if (data == null) {
         throw CacheException('No profile found');
       }
-      return UserProfileModel.fromJson(data as Map<String, dynamic>);
+
+      // FIX: Handle both Map<String, dynamic> and Map<dynamic, dynamic>
+      final Map<String, dynamic> profileData = Map<String, dynamic>.from(data as Map);
+
+      return UserProfileModel.fromJson(profileData);
     } catch (e) {
       throw CacheException('Failed to get profile: $e');
     }

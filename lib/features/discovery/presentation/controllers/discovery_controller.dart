@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:lan_chat_app/routes/app_routes.dart';
 
 import '../../domain/entities/peer_device.dart';
 import '../../domain/usecases/broadcast_presence.dart';
@@ -51,7 +52,7 @@ class DiscoveryController extends GetxController {
   }
 
   void selectPeer(PeerDevice peer) {
-    Get.toNamed('/chat', arguments: peer);
+    Get.toNamed(AppRoutes.chat, arguments: {'peerId': peer.id, 'peerName': peer.userName, 'peerIp': peer.ipAddress});
   }
 
   void clearError() {

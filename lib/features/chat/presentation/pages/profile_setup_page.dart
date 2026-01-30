@@ -116,6 +116,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                     );
 
                                     if (success) {
+                                      await Future.delayed(const Duration(milliseconds: 500));
                                       Get.offAllNamed(AppRoutes.discovery);
                                     }
                                   }

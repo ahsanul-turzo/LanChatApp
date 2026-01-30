@@ -37,7 +37,7 @@ class MessageModel extends Message {
       'senderId': senderId,
       'receiverId': receiverId,
       'content': content,
-      'type': type.name,
+      'type': type.name.toUpperCase(),
       'timestamp': timestamp.toIso8601String(),
       'status': status.name,
       'attachmentUrl': attachmentUrl,

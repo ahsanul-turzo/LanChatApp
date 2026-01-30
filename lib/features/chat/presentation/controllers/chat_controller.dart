@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:lan_chat_app/core/network/socket_service.dart';
 
 import '../../../../core/utils/encryption_utils.dart';
 import '../../../../core/utils/file_utils.dart';
@@ -24,6 +26,7 @@ class ChatController extends GetxController {
   final RxString _error = ''.obs;
   final Rx<String?> _currentPeerId = Rx<String?>(null);
   final Rx<String?> _currentPeerName = Rx<String?>(null);
+  final Rx<String?> _currentPeerIp = Rx<String?>(null);
 
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading.value;
@@ -52,19 +55,47 @@ class ChatController extends GetxController {
       if (args is Map<String, dynamic>) {
         _currentPeerId.value = args['peerId'] as String?;
         _currentPeerName.value = args['peerName'] as String?;
+        _currentPeerIp.value = args['peerIp'] as String?;
       } else {
+        // args is PeerDevice
         _currentPeerId.value = args.id as String?;
         _currentPeerName.value = args.userName as String?;
+        _currentPeerIp.value = args.ipAddress as String?;
       }
+
+      // Connect to peer via WebSocket
+      _connectToPeer();
     }
+  }
+
+  Future<void> _connectToPeer() async {
+    if (_currentPeerIp.value == null) return;
+
+    final SocketService socketService = Get.find();
+
+    // For web, we use the same signaling server
+    // In production, you'd connect directly to peer's WebSocket
+    final peerUrl = 'ws://localhost:8888'; // Same signaling server
+
+    if (!socketService.isConnected) {
+      await socketService.connect(peerUrl);
+    }
+
+    debugPrint('🔗 Connected to chat with ${_currentPeerName.value}');
   }
 
   void _setupMessageListener() {
     _messageSubscription = _receiveMessage().listen(
       (message) {
-        if (message.senderId == _currentPeerId.value) {
+        debugPrint('💬 Received chat message: ${message.content} from ${message.senderId}');
+
+        // Only add if message is for current peer
+        if (message.senderId == _currentPeerId.value || message.receiverId == _currentPeerId.value) {
           _messages.add(message);
           _sortMessages();
+          debugPrint('✅ Message added to chat');
+        } else {
+          debugPrint('⏭️ Message not for this chat');
         }
       },
       onError: (error) {

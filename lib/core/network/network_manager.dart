@@ -1,72 +1,32 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 
 class NetworkManager extends GetxController {
-  final NetworkInfo _networkInfo = NetworkInfo();
-
-  final Rx<String?> _localIp = Rx<String?>(null);
-  final Rx<String?> _subnet = Rx<String?>(null);
-  final RxBool _isConnected = false.obs;
+  final Rx<String?> _localIp = Rx<String?>('192.168.20.12'); // Hardcode for web
+  final Rx<String?> _subnet = Rx<String?>('192.168.20.0');
+  final RxBool _isConnected = true.obs; // Always true for web
 
   String? get localIp => _localIp.value;
   String? get subnet => _subnet.value;
   bool get isConnected => _isConnected.value;
 
-  Timer? _checkTimer;
-
   @override
   void onInit() {
     super.onInit();
-    _startNetworkCheck();
+    print('🌐 NetworkManager initialized with IP: ${_localIp.value}');
   }
 
-  @override
-  void onClose() {
-    _checkTimer?.cancel();
-    super.onClose();
-  }
-
-  void _startNetworkCheck() {
-    _checkNetworkInfo();
-    _checkTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _checkNetworkInfo();
-    });
-  }
-
-  Future<void> _checkNetworkInfo() async {
-    try {
-      final wifiIP = await _networkInfo.getWifiIP();
-      final wifiSubmask = await _networkInfo.getWifiSubmask();
-
-      if (wifiIP != null && wifiIP.isNotEmpty) {
-        _localIp.value = wifiIP;
-        _subnet.value = _calculateSubnet(wifiIP, wifiSubmask ?? '255.255.255.0');
-        _isConnected.value = true;
-      } else {
-        _localIp.value = null;
-        _subnet.value = null;
-        _isConnected.value = false;
-      }
-    } catch (e) {
-      _localIp.value = null;
-      _subnet.value = null;
-      _isConnected.value = false;
-    }
-  }
-
-  String _calculateSubnet(String ip, String mask) {
-    final ipParts = ip.split('.').map(int.parse).toList();
-    final maskParts = mask.split('.').map(int.parse).toList();
-
-    final subnetParts = List.generate(4, (i) => ipParts[i] & maskParts[i]);
-
-    return subnetParts.join('.');
+  // For web, user can set their IP manually
+  void setLocalIp(String ip) {
+    _localIp.value = ip;
+    final parts = ip.split('.');
+    _subnet.value = '${parts[0]}.${parts[1]}.${parts[2]}.0';
+    print('🌐 IP set to: $ip, Subnet: ${_subnet.value}');
   }
 
   List<String> getSubnetIpRange() {
-    if (_subnet.value == null || _localIp.value == null) return [];
+    if (_subnet.value == null) return [];
 
     final subnetParts = _subnet.value!.split('.');
     final List<String> ipRange = [];
@@ -82,6 +42,6 @@ class NetworkManager extends GetxController {
   }
 
   Future<void> refreshNetworkInfo() async {
-    await _checkNetworkInfo();
+    // No-op for web
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:get/get.dart';
 
+import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
@@ -12,6 +13,8 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ChatController controller = Get.find();
+    final ProfileController profileController = Get.find();
+    final currentUserId = profileController.profile?.id ?? '';
 
     return Scaffold(
       appBar: AppBar(
@@ -128,12 +131,15 @@ class ChatPage extends StatelessWidget {
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(8),
                 reverse: false,
                 itemCount: controller.messages.length,
                 itemBuilder: (context, index) {
                   final message = controller.messages[index];
-                  return MessageBubble(message: message);
+                  return MessageBubble(
+                    message: message,
+                    currentUserId: currentUserId,
+                  );
                 },
               );
             }),

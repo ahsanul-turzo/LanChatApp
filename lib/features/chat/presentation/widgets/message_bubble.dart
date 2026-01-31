@@ -8,13 +8,15 @@ import '../../../chat/domain/entities/message.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
+  final String currentUserId;
 
-  const MessageBubble({super.key, required this.message});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.currentUserId,
+  });
 
-  bool get isSentByMe {
-    // This is a simplified check - in real app, compare with current user ID
-    return message.status != MessageStatus.delivered && message.status != MessageStatus.read;
-  }
+  bool get isSentByMe => message.senderId == currentUserId;
 
   String _formatTime(DateTime dateTime) {
     return DateFormat('HH:mm').format(dateTime);
@@ -23,29 +25,29 @@ class MessageBubble extends StatelessWidget {
   Widget _buildStatusIcon(BuildContext context) {
     switch (message.status) {
       case MessageStatus.sending:
-        return const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5));
+        return const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5));
       case MessageStatus.sent:
-        return const Icon(Icons.check, size: 16);
+        return const Icon(Icons.check, size: 14, color: Colors.white70);
       case MessageStatus.delivered:
-        return const Icon(Icons.done_all, size: 16);
+        return const Icon(Icons.done_all, size: 14, color: Colors.white70);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: 16, color: Theme.of(context).primaryColor);
+        return const Icon(Icons.done_all, size: 14, color: Colors.lightBlueAccent);
       case MessageStatus.failed:
-        return Icon(Icons.error_outline, size: 16, color: Theme.of(context).colorScheme.error);
+        return Icon(Icons.error_outline, size: 14, color: Theme.of(context).colorScheme.error);
     }
   }
 
   Widget _buildMessageContent(BuildContext context) {
+    final textColor = isSentByMe ? Colors.white : AppColors.textPrimary;
+
     switch (message.type) {
       case MessageType.text:
         return Text(
           message.content,
           style: TextStyle(
-            color: isSentByMe
-                ? Colors.black87
-                : Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black87,
+            color: textColor,
+            fontSize: 15,
+            height: 1.3,
           ),
         );
 
@@ -55,17 +57,26 @@ class MessageBubble extends StatelessWidget {
           children: [
             Container(
               constraints: const BoxConstraints(maxWidth: 250),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.2),
+                color: Colors.black.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.image, size: 64, color: Theme.of(context).primaryColor),
+                  Icon(Icons.image, size: 48, color: isSentByMe ? Colors.white70 : AppColors.primary),
                   const Gap(8),
-                  Text(message.attachmentName ?? 'Image', style: const TextStyle(fontSize: 12)),
+                  Text(
+                    message.attachmentName ?? 'Image',
+                    style: TextStyle(fontSize: 13, color: textColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (message.attachmentSize != null)
-                    Text(FileUtils.formatFileSize(message.attachmentSize!), style: const TextStyle(fontSize: 10)),
+                    Text(
+                      FileUtils.formatFileSize(message.attachmentSize!),
+                      style: TextStyle(fontSize: 11, color: textColor.withValues(alpha: 0.7)),
+                    ),
                 ],
               ),
             ),
@@ -74,25 +85,47 @@ class MessageBubble extends StatelessWidget {
 
       case MessageType.file:
         return Container(
-          constraints: const BoxConstraints(maxWidth: 250),
+          constraints: const BoxConstraints(maxWidth: 280),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.insert_drive_file, size: 32, color: Theme.of(context).primaryColor),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isSentByMe ? Colors.white24 : AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.insert_drive_file,
+                  size: 28,
+                  color: isSentByMe ? Colors.white : AppColors.primary,
+                ),
+              ),
               const Gap(12),
-              Expanded(
+              Flexible(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       message.attachmentName ?? 'File',
-                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: textColor,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (message.attachmentSize != null)
-                      Text(FileUtils.formatFileSize(message.attachmentSize!), style: const TextStyle(fontSize: 12)),
+                      Text(
+                        FileUtils.formatFileSize(message.attachmentSize!),
+                        style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7)),
+                      ),
                   ],
                 ),
               ),
@@ -101,48 +134,53 @@ class MessageBubble extends StatelessWidget {
         );
 
       case MessageType.typing:
-        return const Text('Typing...');
+        return Text('Typing...', style: TextStyle(color: textColor, fontStyle: FontStyle.italic));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
         mainAxisAlignment: isSentByMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isSentByMe) ...[
             CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).primaryColor,
-              child: const Icon(Icons.person, size: 16, color: Colors.white),
+              radius: 14,
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.person, size: 14, color: Colors.white),
             ),
             const Gap(8),
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              constraints: const BoxConstraints(maxWidth: 320),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isSentByMe
-                    ? (isDark ? AppColors.messageSentDark : AppColors.messageSent)
-                    : (isDark ? AppColors.messageReceivedDark : AppColors.messageReceived),
+                color: isSentByMe ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(12),
-                  topRight: const Radius.circular(12),
-                  bottomLeft: Radius.circular(isSentByMe ? 12 : 4),
-                  bottomRight: Radius.circular(isSentByMe ? 4 : 12),
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isSentByMe ? 16 : 4),
+                  bottomRight: Radius.circular(isSentByMe ? 4 : 16),
                 ),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 2, offset: const Offset(0, 1)),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _buildMessageContent(context),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildMessageContent(context),
+                  ),
                   const Gap(4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -150,19 +188,21 @@ class MessageBubble extends StatelessWidget {
                       Text(
                         _formatTime(message.timestamp),
                         style: TextStyle(
-                          fontSize: 10,
-                          color: isSentByMe
-                              ? Colors.black54
-                              : Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                          fontSize: 11,
+                          color: isSentByMe ? Colors.white70 : AppColors.textSecondary,
                         ),
                       ),
-                      if (isSentByMe) ...[const Gap(4), _buildStatusIcon(context)],
+                      if (isSentByMe) ...[
+                        const Gap(4),
+                        _buildStatusIcon(context),
+                      ],
                     ],
                   ),
                 ],
               ),
             ),
           ),
+          if (isSentByMe) const Gap(8),
         ],
       ),
     );

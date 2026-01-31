@@ -11,6 +11,7 @@ import '../constants/network_constants.dart';
 import 'network_manager.dart';
 
 class NetworkDiscovery extends GetxController {
+  // Recommended style final NetworkManager _networkManager = Get.find(); instead of Get.find<NetworkManager>();
   final NetworkManager _networkManager = Get.find();
 
   final RxList<PeerDevice> _discoveredPeers = <PeerDevice>[].obs;

@@ -73,15 +73,22 @@ class ChatController extends GetxController {
 
     final SocketService socketService = Get.find();
 
-    // For web, we use the same signaling server
-    // In production, you'd connect directly to peer's WebSocket
-    final peerUrl = 'ws://localhost:8888'; // Same signaling server
+    // Connect to signaling server (same as discovery)
+    const peerUrl = 'ws://192.168.20.12:8888'; // Your server IP
+
+    print('🔗 Connecting to chat server: $peerUrl');
 
     if (!socketService.isConnected) {
-      await socketService.connect(peerUrl);
+      final connected = await socketService.connect(peerUrl);
+      if (connected) {
+        print('✅ Connected to chat with ${_currentPeerName.value}');
+      } else {
+        print('❌ Failed to connect to chat server');
+        _error.value = 'Failed to connect to chat server';
+      }
+    } else {
+      print('✅ Already connected to chat');
     }
-
-    debugPrint('🔗 Connected to chat with ${_currentPeerName.value}');
   }
 
   void _setupMessageListener() {

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:lan_chat_app/core/network/socket_service.dart';
 import 'package:lan_chat_app/features/profile/presentation/controllers/profile_controller.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -43,70 +44,45 @@ class NetworkDiscovery extends GetxController {
   }
 
   Future<void> _connectToSignalingServer() async {
-    const signalingServerUrl = 'ws://192.168.20.12:8888';
+    // SocketService is already connected in DI
+    final socketService = Get.find<SocketService>();
 
-    try {
-      debugPrint('🔌 Attempting to connect to signaling server...');
-
-      _broadcastChannel = WebSocketChannel.connect(Uri.parse(signalingServerUrl));
-
-      debugPrint('✅ Connected to signaling server');
-
-      _broadcastChannel!.stream.listen(
-        (message) {
-          String messageString;
-          if (message is List<int>) {
-            messageString = String.fromCharCodes(message);
-          } else {
-            messageString = message as String;
-          }
-
-          debugPrint('📨 Received message: $messageString');
-
-          try {
-            final data = jsonDecode(messageString) as Map<String, dynamic>;
-            final type = data['type'] as String?;
-
-            // Handle IP info from server
-            if (type == 'IP_INFO') {
-              String? ip = data['ip'] as String?;
-
-              // Fix IPv6 localhost and convert to LAN IP
-              if (ip == '::1' || ip == '127.0.0.1' || ip == 'unknown') {
-                debugPrint('⚠️ Server returned localhost ($ip), using fallback LAN IP');
-                ip = '192.168.20.12'; // Your actual LAN IP
-              }
-
-              if (ip != null) {
-                _networkManager.setIpFromServer(ip);
-                debugPrint('✅ IP set, now broadcasting presence');
-                _broadcastPresence();
-              }
-              return;
-            }
-
-            if (type == 'PRESENCE' || type == 'PRESENCE_RESPONSE') {
-              _handleDiscoveryMessage(messageString);
-            }
-          } catch (e) {
-            debugPrint('⚠️ Error processing message: $e');
-          }
-        },
-        onError: (error) {
-          debugPrint('❌ Stream error: $error');
-        },
-        onDone: () {
-          debugPrint('⚠️ Connection closed');
-        },
-      );
-
-      _broadcastPresence();
-    } catch (e) {
-      debugPrint('❌ Failed to connect to signaling server: $e');
+    if (!socketService.isConnected) {
+      debugPrint('⚠️ SocketService not connected yet, waiting...');
+      await Future.delayed(const Duration(seconds: 1));
     }
+
+    debugPrint('✅ Using shared WebSocket connection');
+
+    // Listen to messages from shared connection
+    socketService.messageStream.listen((data) {
+      final type = data['type'] as String?;
+
+      if (type == 'IP_INFO') {
+        String? ip = data['ip'] as String?;
+        if (ip == '::1' || ip == '127.0.0.1' || ip == 'unknown') {
+          ip = '192.168.20.12';
+        }
+        if (ip != null) {
+          _networkManager.setIpFromServer(ip);
+          _broadcastPresence();
+        }
+      } else if (type == 'PRESENCE' || type == 'PRESENCE_RESPONSE') {
+        _handleDiscoveryMessage(jsonEncode(data));
+      }
+    });
+
+    _broadcastPresence();
   }
 
   void _broadcastPresence() {
+    final socketService = Get.find<SocketService>();
+
+    if (!socketService.isConnected) {
+      debugPrint('⚠️ Cannot broadcast: not connected');
+      return;
+    }
+
     if (_broadcastChannel == null) return;
 
     String userId = 'unknown';
@@ -133,7 +109,7 @@ class NetworkDiscovery extends GetxController {
       'timestamp': DateTime.now().toIso8601String(),
     };
 
-    _broadcastChannel!.sink.add(jsonEncode(presenceData));
+    socketService.sendMessage(presenceData); // Instead of _broadcastChannel
     debugPrint('📡 Broadcasting: $presenceData');
   }
 

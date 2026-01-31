@@ -30,7 +30,11 @@ class DependencyInjection {
     // Core - Immediate initialization
     Get.put(GetStorage(), permanent: true);
     Get.put(NetworkManager(), permanent: true);
-    Get.put(SocketService(), permanent: true);
+
+    // Connect SocketService immediately
+    final socketService = Get.put(SocketService(), permanent: true);
+    await socketService.connect('ws://192.168.20.12:8888');
+
     Get.put(NetworkDiscovery(), permanent: true);
 
     // Profile Feature

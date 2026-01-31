@@ -30,17 +30,24 @@ class SocketService extends GetxController {
   Future<bool> connect(String serverUrl) async {
     try {
       _serverUrl = serverUrl;
+
+      debugPrint('🔌 Connecting to: $serverUrl');
+
       _channel = WebSocketChannel.connect(Uri.parse(serverUrl));
 
       _channel!.stream.listen(_onMessage, onError: _onError, onDone: _onDone, cancelOnError: false);
+
+      // Wait a bit to ensure connection
+      await Future.delayed(const Duration(milliseconds: 500));
 
       _isConnected.value = true;
       _reconnectAttempts = 0;
       _startHeartbeat();
 
+      debugPrint('✅ Connected to WebSocket');
       return true;
     } catch (e) {
-      debugPrint('Connection error: $e');
+      debugPrint('❌ Connection error: $e');
       _isConnected.value = false;
       _scheduleReconnect();
       return false;

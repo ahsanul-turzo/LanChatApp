@@ -7,7 +7,9 @@ const server = http.createServer((req, res) => {
 });
 
 const wss = new WebSocket.Server({ server });
-const clients = new Map();
+const clients = new Map(); // ws -> { userId, ip, userName, deviceName }
+const userSockets = new Map(); // userId -> ws (for quick lookup)
+const messageQueue = new Map(); // userId -> [messages] (for offline delivery)
 
 console.log('🚀 WebSocket server running on ws://localhost:8888');
 
@@ -30,14 +32,21 @@ wss.on('connection', (ws, req) => {
     console.log('→ Message:', data);
 
     if (data.type === 'PRESENCE') {
+      const userId = data.userId;
+
+      // Store client info
       clients.set(ws, {
         ip: data.ip,
-        userId: data.userId,
+        userId: userId,
         userName: data.userName,
         deviceName: data.deviceName,
         timestamp: data.timestamp
       });
 
+      // Map userId to socket for quick lookup
+      userSockets.set(userId, ws);
+
+      // Broadcast presence to all other clients
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify({
@@ -51,6 +60,7 @@ wss.on('connection', (ws, req) => {
         }
       });
 
+      // Send existing clients' presence to new client
       clients.forEach((clientData, clientWs) => {
         if (clientWs !== ws && clientWs.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
@@ -59,15 +69,48 @@ wss.on('connection', (ws, req) => {
           }));
         }
       });
-    } else if (data.type === 'TEXT' || data.type === 'IMAGE' || data.type === 'FILE') {
-      console.log(`💬 Chat message from ${data.senderId} to ${data.receiverId}`);
 
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(message);
+      // Deliver any queued messages for this user
+      if (messageQueue.has(userId)) {
+        const pendingMessages = messageQueue.get(userId);
+        console.log(`📬 Delivering ${pendingMessages.length} queued messages to ${data.userName}`);
+
+        pendingMessages.forEach((msg) => {
+          ws.send(JSON.stringify(msg));
+        });
+
+        // Clear the queue
+        messageQueue.delete(userId);
+      }
+
+    } else if (data.type === 'TEXT' || data.type === 'IMAGE' || data.type === 'FILE') {
+      const receiverId = data.receiverId;
+      const receiverWs = userSockets.get(receiverId);
+
+      console.log(`💬 Chat message from ${data.senderId} to ${receiverId}`);
+
+      if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+        // Receiver is online - deliver directly
+        console.log(`📤 Delivering message directly to ${receiverId}`);
+        receiverWs.send(message);
+      } else {
+        // Receiver is offline - queue the message
+        console.log(`📥 Queuing message for offline user ${receiverId}`);
+
+        if (!messageQueue.has(receiverId)) {
+          messageQueue.set(receiverId, []);
         }
-      });
+        messageQueue.get(receiverId).push(data);
+
+        // Also notify sender that message is queued (optional)
+        ws.send(JSON.stringify({
+          type: 'MESSAGE_QUEUED',
+          messageId: data.id,
+          receiverId: receiverId
+        }));
+      }
     } else {
+      // Broadcast other message types
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
           client.send(message);
@@ -77,7 +120,14 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    console.log('✗ Client disconnected');
+    const clientData = clients.get(ws);
+    if (clientData) {
+      console.log(`✗ Client disconnected: ${clientData.userName} (${clientData.userId})`);
+      userSockets.delete(clientData.userId);
+      // Note: We keep queued messages even after disconnect
+    } else {
+      console.log('✗ Client disconnected');
+    }
     clients.delete(ws);
   });
 

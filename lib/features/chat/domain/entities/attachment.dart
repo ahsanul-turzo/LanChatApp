@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 class Attachment {
   final String id;
   final String fileName;
-  final String filePath;
+  final String? filePath;
+  final Uint8List? fileBytes;
   final int fileSize;
   final String mimeType;
   final AttachmentType type;
@@ -11,7 +14,8 @@ class Attachment {
   Attachment({
     required this.id,
     required this.fileName,
-    required this.filePath,
+    this.filePath,
+    this.fileBytes,
     required this.fileSize,
     required this.mimeType,
     required this.type,
@@ -23,6 +27,7 @@ class Attachment {
     String? id,
     String? fileName,
     String? filePath,
+    Uint8List? fileBytes,
     int? fileSize,
     String? mimeType,
     AttachmentType? type,
@@ -33,6 +38,7 @@ class Attachment {
       id: id ?? this.id,
       fileName: fileName ?? this.fileName,
       filePath: filePath ?? this.filePath,
+      fileBytes: fileBytes ?? this.fileBytes,
       fileSize: fileSize ?? this.fileSize,
       mimeType: mimeType ?? this.mimeType,
       type: type ?? this.type,

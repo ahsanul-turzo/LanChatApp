@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lan_chat_app/core/network/socket_service.dart';
@@ -165,7 +166,11 @@ class ChatController extends GetxController {
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: kIsWeb,
+      );
 
       if (result == null || result.files.isEmpty) return;
 
@@ -183,7 +188,10 @@ class ChatController extends GetxController {
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: kIsWeb,
+      );
 
       if (result == null || result.files.isEmpty) return;
 
@@ -213,7 +221,8 @@ class ChatController extends GetxController {
     final attachment = Attachment(
       id: EncryptionUtils.generateMessageId(),
       fileName: file.name,
-      filePath: file.path ?? '',
+      filePath: kIsWeb ? null : file.path,
+      fileBytes: kIsWeb ? file.bytes : null,
       fileSize: file.size,
       mimeType: FileUtils.getMimeType(file.name),
       type: type == MessageType.image ? AttachmentType.image : AttachmentType.document,

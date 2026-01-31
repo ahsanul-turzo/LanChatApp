@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lan_chat_app/core/network/socket_service.dart';
 import 'package:lan_chat_app/features/profile/presentation/controllers/profile_controller.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../features/discovery/domain/entities/peer_device.dart';
 import '../constants/network_constants.dart';
@@ -19,7 +18,6 @@ class NetworkDiscovery extends GetxController {
   List<PeerDevice> get discoveredPeers => _discoveredPeers;
 
   Timer? _scanTimer;
-  WebSocketChannel? _broadcastChannel;
 
   @override
   void onInit() {
@@ -82,8 +80,6 @@ class NetworkDiscovery extends GetxController {
       debugPrint('⚠️ Cannot broadcast: not connected');
       return;
     }
-
-    if (_broadcastChannel == null) return;
 
     String userId = 'unknown';
     String userName = 'Unknown User';
@@ -175,7 +171,6 @@ class NetworkDiscovery extends GetxController {
 
   void stopDiscovery() {
     _scanTimer?.cancel();
-    _broadcastChannel?.sink.close();
     _discoveredPeers.clear();
   }
 

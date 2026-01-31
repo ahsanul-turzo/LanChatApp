@@ -51,9 +51,10 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       final messageData = message.toJson();
       messageData['type'] = NetworkConstants.msgTypeText;
 
+      debugPrint('📤 Sending message: $messageData');
       socketService.sendMessage(messageData);
 
-      return message.copyWith(status: MessageStatus.sent) as MessageModel;
+      return MessageModel.fromEntity(message.copyWith(status: MessageStatus.sent));
     } catch (e) {
       throw NetworkException('Failed to send message: $e');
     }

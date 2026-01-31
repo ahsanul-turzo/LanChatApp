@@ -38,6 +38,7 @@ class ConversationController extends GetxController {
     );
   }
 
+  @override
   Future<void> refresh() async {
     await loadConversations();
   }

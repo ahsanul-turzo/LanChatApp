@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import 'package:lan_chat_app/features/chat/presentation/pages/profile_setup_page.dart';
 import 'package:lan_chat_app/features/discovery/presentation/pages/conversations_page.dart';
+import 'package:lan_chat_app/features/profile/presentation/pages/profile_setup_page.dart';
 
 import '../features/chat/presentation/controllers/chat_controller.dart';
 import '../features/chat/presentation/controllers/conversation_controller.dart';

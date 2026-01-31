@@ -12,8 +12,18 @@ const clients = new Map();
 console.log('🚀 WebSocket server running on ws://localhost:8888');
 
 wss.on('connection', (ws, req) => {
-  const clientIp = req.socket.remoteAddress;
+  // Extract client IP
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0] ||
+                   req.socket.remoteAddress?.replace('::ffff:', '') ||
+                   'unknown';
+
   console.log('✓ Client connected from:', clientIp);
+
+  // Send IP back to client immediately
+  ws.send(JSON.stringify({
+    type: 'IP_INFO',
+    ip: clientIp
+  }));
 
   ws.on('message', (message) => {
     const data = JSON.parse(message.toString());
@@ -76,6 +86,6 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-server.listen(8888, () => {
-  console.log('📡 HTTP server listening on http://localhost:8888');
+server.listen(8888, '0.0.0.0', () => {
+  console.log('📡 Server listening on all interfaces at port 8888');
 });

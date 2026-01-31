@@ -87,19 +87,21 @@ class ChatController extends GetxController {
   void _setupMessageListener() {
     _messageSubscription = _receiveMessage().listen(
       (message) {
-        debugPrint('💬 Received chat message: ${message.content} from ${message.senderId}');
+        debugPrint('💬 Received: "${message.content}" | From: ${message.senderId} | To: ${message.receiverId}');
+        debugPrint('🔍 Current peer: ${_currentPeerId.value} | My ID: ${_profileController.profile?.id}');
 
-        // Only add if message is for current peer
-        if (message.senderId == _currentPeerId.value || message.receiverId == _currentPeerId.value) {
+        // Add message if it's FROM the current peer TO me
+        if (message.senderId == _currentPeerId.value && message.receiverId == _profileController.profile?.id) {
+          debugPrint('✅ Adding received message to chat');
           _messages.add(message);
           _sortMessages();
-          debugPrint('✅ Message added to chat');
         } else {
           debugPrint('⏭️ Message not for this chat');
         }
       },
       onError: (error) {
         _error.value = 'Error receiving message: $error';
+        debugPrint('❌ Error in message listener: $error');
       },
     );
   }
@@ -114,9 +116,11 @@ class ChatController extends GetxController {
     _isSending.value = true;
     _error.value = '';
 
+    final myUserId = _profileController.profile?.id ?? 'unknown';
+
     final message = Message(
       id: EncryptionUtils.generateMessageId(),
-      senderId: _profileController.profile?.id ?? 'unknown',
+      senderId: myUserId,
       receiverId: _currentPeerId.value!,
       content: content,
       type: MessageType.text,
@@ -124,8 +128,11 @@ class ChatController extends GetxController {
       status: MessageStatus.sending,
     );
 
+    // Add to UI immediately
     _messages.add(message);
     _sortMessages();
+
+    debugPrint('📨 Sending message from $myUserId to ${_currentPeerId.value}');
 
     final result = await _sendMessage(message);
 
@@ -133,9 +140,11 @@ class ChatController extends GetxController {
       (failure) {
         _error.value = failure.message;
         _updateMessageStatus(message.id, MessageStatus.failed);
+        debugPrint('❌ Failed to send: ${failure.message}');
       },
       (sentMessage) {
         _updateMessageStatus(message.id, MessageStatus.sent);
+        debugPrint('✅ Message sent successfully');
       },
     );
 

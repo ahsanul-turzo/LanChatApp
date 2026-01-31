@@ -43,7 +43,7 @@ class NetworkDiscovery extends GetxController {
   }
 
   Future<void> _connectToSignalingServer() async {
-    const signalingServerUrl = 'ws://localhost:8888';
+    const signalingServerUrl = 'ws://192.168.20.12:8888';
 
     try {
       debugPrint('🔌 Attempting to connect to signaling server...');
@@ -54,7 +54,6 @@ class NetworkDiscovery extends GetxController {
 
       _broadcastChannel!.stream.listen(
         (message) {
-          // Convert Uint8List to String if needed
           String messageString;
           if (message is List<int>) {
             messageString = String.fromCharCodes(message);
@@ -64,17 +63,33 @@ class NetworkDiscovery extends GetxController {
 
           debugPrint('📨 Received message: $messageString');
 
-          // Only process PRESENCE messages in NetworkDiscovery
           try {
             final data = jsonDecode(messageString) as Map<String, dynamic>;
             final type = data['type'] as String?;
 
+            // Handle IP info from server
+            if (type == 'IP_INFO') {
+              String? ip = data['ip'] as String?;
+
+              // Fix IPv6 localhost and convert to LAN IP
+              if (ip == '::1' || ip == '127.0.0.1' || ip == 'unknown') {
+                debugPrint('⚠️ Server returned localhost ($ip), using fallback LAN IP');
+                ip = '192.168.20.12'; // Your actual LAN IP
+              }
+
+              if (ip != null) {
+                _networkManager.setIpFromServer(ip);
+                debugPrint('✅ IP set, now broadcasting presence');
+                _broadcastPresence();
+              }
+              return;
+            }
+
             if (type == 'PRESENCE' || type == 'PRESENCE_RESPONSE') {
               _handleDiscoveryMessage(messageString);
             }
-            // Ignore other message types (TEXT, IMAGE, etc.)
           } catch (e) {
-            debugPrint('⚠️ Skipping non-JSON message');
+            debugPrint('⚠️ Error processing message: $e');
           }
         },
         onError: (error) {
